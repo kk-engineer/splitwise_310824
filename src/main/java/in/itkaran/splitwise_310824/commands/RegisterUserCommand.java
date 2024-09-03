@@ -32,8 +32,6 @@ public class RegisterUserCommand implements Command {
         String password = words.get(3);
         System.out.println("Registering user: "+username+" with phoneNum: "+phoneNumber+" and password: "+password);
 
-        // TODO : Call appropriate UserController method to register user
-
         UserRequestDto userRequestDto = new UserRequestDto();
         userRequestDto.setName(username);
         userRequestDto.setPhoneNumber(phoneNumber);
