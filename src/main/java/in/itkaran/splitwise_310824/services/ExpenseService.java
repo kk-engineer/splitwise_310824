@@ -2,16 +2,17 @@ package in.itkaran.splitwise_310824.services;
 
 
 import in.itkaran.splitwise_310824.exceptions.InvalidUserException;
-import in.itkaran.splitwise_310824.models.Expense;
-import in.itkaran.splitwise_310824.models.User;
-import in.itkaran.splitwise_310824.models.UserExpense;
-import in.itkaran.splitwise_310824.models.UserExpenseType;
+import in.itkaran.splitwise_310824.models.*;
 import in.itkaran.splitwise_310824.repositories.ExpenseRepository;
 import in.itkaran.splitwise_310824.repositories.GroupRepository;
 import in.itkaran.splitwise_310824.repositories.UserExpenseRepository;
 import in.itkaran.splitwise_310824.repositories.UserRepository;
+import in.itkaran.splitwise_310824.services.strategies.GreedySettleUpStrategy;
+import in.itkaran.splitwise_310824.services.strategies.SettleUpStrategy;
 import org.springframework.stereotype.Service;
 
+import java.sql.Array;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -90,5 +91,43 @@ public class ExpenseService {
         }
 
         return expense;
+    }
+
+    public List<Transaction> settleUpUser(Long userId) {
+        // Set the algorithm to be used for settling up
+        SettleUpStrategy settleUpStrategy = new GreedySettleUpStrategy();
+
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (!optionalUser.isPresent()) {
+            throw new InvalidUserException("User not found");
+        }
+
+        List<UserExpense> userExpenses = userExpenseRepository.findAllByUserId(userId);
+        List<Long> expenseIds = new ArrayList<>();
+        for (UserExpense userExpense: userExpenses) {
+            expenseIds.add(userExpense.getExpense().getId());
+        }
+
+        // Find other userExpenses involed in the expenses using expenseIds
+        List<UserExpense> allInvoledUserExpenses = new ArrayList<>();
+        for (Long expenseId: expenseIds) {
+            allInvoledUserExpenses.addAll(userExpenseRepository.findAllByExpenseId(expenseId));
+        }
+
+        // Call the settleUp method of the strategy
+        List<Transaction> allTransactions = settleUpStrategy.settleUp(allInvoledUserExpenses);
+
+        List<Transaction> userTransactions = new ArrayList<>();
+        for (Transaction transaction: allTransactions) {
+            if (transaction.getFromUserId() == userId || transaction.getToUserId() == userId) {
+                userTransactions.add(transaction);
+            }
+        }
+        return userTransactions;
+    }
+
+    public List<Transaction> settleUpGroup(Long groupId) {
+        // TODO: Implement this method
+        return null;
     }
 }
